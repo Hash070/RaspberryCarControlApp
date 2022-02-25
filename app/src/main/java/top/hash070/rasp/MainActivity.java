@@ -1,6 +1,8 @@
 package top.hash070.rasp;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -14,16 +16,12 @@ import android.widget.ImageButton;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.Socket;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "hash070";
@@ -31,21 +29,17 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton right;
     private ImageButton up;
     private ImageButton down;
-    private Socket s;
+//    private Socket s;
     private ObjectInputStream ois;
     private ObjectOutputStream oos;
     private String ip;
     private int port;
+    private DatagramSocket s;
+    private InetSocketAddress addr;
+    private byte[] sendData;
+    private DatagramPacket datagramPacket;
 
-//    public static final int GOUP=1;
-//    public static final int GODOWN=1;
-//    public static final int GOLEFT=1;
-//    public static final int GORIGHT=1;
     private Handler myHandler;
-    private InputStream ins;
-    private OutputStream ous;
-    private BufferedWriter bw;
-    private BufferedReader bufferedReader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,17 +50,14 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
-
-        setWebView("192.168.1.180",8080);
-        ip="192.168.1.180";
-        port=7878;
+        setWebView(ip,8080);
         new Thread(new Runnable() {
             @Override
             public void run() {
                 initTCP(ip,port);
             }
         }).start();
-        getWidget();
+        init();
         up.setOnTouchListener(upListener);
         down.setOnTouchListener(downListener);
         left.setOnTouchListener(leftListener);
@@ -85,12 +76,14 @@ public class MainActivity extends AppCompatActivity {
         myWebView.loadUrl("http://"+ip+":"+port+"/?action=stream");
     }
     @SuppressLint("HandlerLeak")
-    protected void getWidget(){
+    protected void init(){
         left=(ImageButton) findViewById(R.id.left);
         right=(ImageButton) findViewById(R.id.right);
         up=(ImageButton) findViewById(R.id.up);
         down=(ImageButton) findViewById(R.id.down);
-
+        SharedPreferences sharedPreferences= getSharedPreferences("data", Context.MODE_PRIVATE);
+        ip = sharedPreferences.getString("ip","192.168.1.1");//默认ip:192.168.1.1
+        port = sharedPreferences.getInt("port",7878);//默认端口:7878
 //        myHandler=new Handler(){
 //            @Override
 //            public void handleMessage(@NonNull Message msg) {
@@ -102,17 +95,15 @@ public class MainActivity extends AppCompatActivity {
     }
     private void initTCP(String ip,int port){
         try {
-            s = new Socket("192.168.1.180", 7878);
-            ins = s.getInputStream();
-            ous = s.getOutputStream();
-            bufferedReader = new BufferedReader(new InputStreamReader(ins));
-            bw = new BufferedWriter(new OutputStreamWriter(ous));
+            s = new DatagramSocket();
+            addr = new InetSocketAddress(ip,port);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
     private View.OnTouchListener upListener = new View.OnTouchListener() {//按钮监听
+        @Override
         public boolean onTouch(View arg0, MotionEvent event) {
             int action = event.getAction();
             if (action == MotionEvent.ACTION_DOWN) {
@@ -121,10 +112,12 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("1,50");
-                            bw.flush();
+                            sendData=("1,50").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 1,50");
-                        } catch (IOException e) {
+                            Thread.sleep(100);
+                        } catch (IOException | InterruptedException e) {
                             e.printStackTrace();
                         }
                     }
@@ -135,11 +128,11 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("0,0");
-                            bw.flush();
-                            Thread.sleep(100);
+                            sendData=("0,0").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 0,0");
-                        } catch (IOException | InterruptedException e) {
+                        } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
@@ -147,7 +140,9 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         }
-    };    private View.OnTouchListener downListener = new View.OnTouchListener() {//按钮监听
+    };
+    private View.OnTouchListener downListener = new View.OnTouchListener() {//按钮监听
+        @Override
         public boolean onTouch(View arg0, MotionEvent event) {
             int action = event.getAction();
             if (action == MotionEvent.ACTION_DOWN) {
@@ -156,45 +151,11 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("2,50");
-                            bw.flush();
-                            Thread.sleep(100);
+                            sendData=("2,50").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 2,50");
-                        } catch (IOException | InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
-            } else if (action == MotionEvent.ACTION_UP) {
-                // 松开 todo 处理相关逻辑
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            bw.write("0,0");
-                            bw.flush();
-                            Log.d(TAG, "run: 0,0");
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
-            }
-            return false;
-        }
-    };    private View.OnTouchListener leftListener = new View.OnTouchListener() {//按钮监听
-        public boolean onTouch(View arg0, MotionEvent event) {
-            int action = event.getAction();
-            if (action == MotionEvent.ACTION_DOWN) {
-                // 按下 todo 处理相关逻辑
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            bw.write("3,50");
-                            bw.flush();
                             Thread.sleep(100);
-                            Log.d(TAG, "run: 3,50");
                         } catch (IOException | InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -206,8 +167,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("0,0");
-                            bw.flush();
+                            sendData=("0,0").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 0,0");
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -217,7 +179,48 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         }
-    };    private View.OnTouchListener rightListener = new View.OnTouchListener() {//按钮监听
+    };
+    private View.OnTouchListener leftListener = new View.OnTouchListener() {//按钮监听
+        @Override
+        public boolean onTouch(View arg0, MotionEvent event) {
+            int action = event.getAction();
+            if (action == MotionEvent.ACTION_DOWN) {
+                // 按下 todo 处理按钮按下逻辑
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            sendData=("3,50").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
+                            Log.d(TAG, "run: 3,50");
+                            Thread.sleep(100);
+                        } catch (IOException | InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            } else if (action == MotionEvent.ACTION_UP) {
+                // 松开 todo 处理按钮松开逻辑
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            sendData=("0,0").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
+                            Log.d(TAG, "run: 0,0");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
+            return false;
+        }
+    };
+    private View.OnTouchListener rightListener = new View.OnTouchListener() {//按钮监听
+        @Override
         public boolean onTouch(View arg0, MotionEvent event) {
             int action = event.getAction();
             if (action == MotionEvent.ACTION_DOWN) {
@@ -226,8 +229,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("4,50");
-                            bw.flush();
+                            sendData=("4,50").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 4,50");
                             Thread.sleep(100);
                         } catch (IOException | InterruptedException e) {
@@ -241,8 +245,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            bw.write("0,0");
-                            bw.flush();
+                            sendData=("0,0").getBytes();
+                            datagramPacket=new DatagramPacket(sendData,sendData.length,addr);
+                            s.send(datagramPacket);
                             Log.d(TAG, "run: 0,0");
                         } catch (IOException e) {
                             e.printStackTrace();
