@@ -3,7 +3,10 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/Admin/AndroidStudioProjects/RaspcarController/app/src/main/res/drawable/mid_edittext_bg.xml" value="0.147" />
         <entry key="..\:/Users/Admin/AndroidStudioProjects/RaspcarController/app/src/main/res/layout/activity_main.xml" value="0.25" />
+        <entry key="..\:/Users/Admin/AndroidStudioProjects/RaspcarController/app/src/main/res/layout/setting_fragment.xml" value="0.1716485507246377" />
+        <entry key="..\:/Users/Admin/AndroidStudioProjects/RaspcarController/app/src/main/res/layout/setting_layout.xml" value="0.37135416666666665" />
       </map>
     </option>
   </component>
