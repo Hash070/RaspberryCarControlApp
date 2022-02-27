@@ -1,10 +1,8 @@
 package top.hash070.rasp;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
@@ -45,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private byte[] sendData;
     private DatagramPacket datagramPacket;
     private LayoutInflater layoutInflater;
-    private Handler myHandler;
+    private WebView myWebView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
         getComponent();
+        setWebView(ip,8080);
         initUDP();
         up.setOnTouchListener(upListener);
         down.setOnTouchListener(downListener);
@@ -72,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void setWebView(String ip, int port) {
-        WebView myWebView = (WebView) findViewById(R.id.webview);
         myWebView = (WebView) findViewById(R.id.webview);//获取view
         WebSettings WebSet = myWebView.getSettings();    //获取webview设置
         WebSet.setJavaScriptEnabled(true);              //设置JavaScript支持
@@ -84,29 +82,20 @@ public class MainActivity extends AppCompatActivity {
         myWebView.loadUrl("http://" + ip + ":" + port + "/?action=stream");
     }
 
-    @SuppressLint("HandlerLeak")
     protected void initUDP() {
         SharedPreferences sharedPreferences = getSharedPreferences("data", Context.MODE_PRIVATE);
         ip = sharedPreferences.getString("ip", "192.168.1.1");//默认ip:192.168.1.1
         port = sharedPreferences.getInt("port", 7878);//默认端口:7878
-        setWebView(ip, 8080);
         new Thread(new Runnable() {
             @Override
             public void run() {
-                initTCP(ip, port);
+                createUDP(ip, port);
             }
         }).start();
-//        myHandler=new Handler(){
-//            @Override
-//            public void handleMessage(@NonNull Message msg) {
-//                switch (msg.what){
-//                    case GOLEFT:
-//                }
-//            }
-//        };
+        myWebView.loadUrl("http://" + ip + ":" + 8080 + "/?action=stream");
     }
 
-    private void initTCP(String ip, int port) {
+    private void createUDP(String ip, int port) {
         try {
             s = new DatagramSocket();
             addr = new InetSocketAddress(ip, port);

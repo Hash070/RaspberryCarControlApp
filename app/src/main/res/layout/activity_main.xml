@@ -52,8 +52,7 @@
         app:layout_constraintRight_toRightOf="parent"
         android:layout_marginTop="20dp"
         android:layout_marginRight="40dp"
-        android:onClick="settings"
-        />
+        android:onClick="settings" />
     <ImageButton
         android:id="@+id/s_right"
         android:layout_width="70dp"
@@ -63,8 +62,7 @@
         android:layout_marginRight="40dp"
         android:layout_marginBottom="50dp"
         android:src="@drawable/rightarr"
-        android:onClick="s_right"
-        />
+        android:onClick="s_right" />
     <ImageButton
         android:id="@+id/s_left"
         android:layout_width="70dp"
@@ -73,8 +71,7 @@
         app:layout_constraintTop_toTopOf="@+id/s_right"
         android:layout_marginRight="70dp"
         android:src="@drawable/leftarr"
-        android:onClick="s_left"
-        />
+        android:onClick="s_left" />
     <ImageButton
         android:id="@+id/s_up"
         android:layout_width="70dp"
@@ -82,8 +79,7 @@
         app:layout_constraintBottom_toTopOf="@+id/s_right"
         app:layout_constraintRight_toLeftOf="@+id/s_right"
         android:src="@drawable/uparr"
-        android:onClick="s_up"
-        />
+        android:onClick="s_up" />
     <ImageButton
         android:id="@+id/s_down"
         android:layout_width="70dp"
@@ -91,8 +87,7 @@
         app:layout_constraintTop_toBottomOf="@+id/s_right"
         app:layout_constraintRight_toLeftOf="@+id/s_right"
         android:src="@drawable/downarr"
-        android:onClick="s_down"
-        />
+        android:onClick="s_down" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
