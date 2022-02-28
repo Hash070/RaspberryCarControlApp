@@ -2,6 +2,7 @@ package top.hash070.rasp;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Display;
@@ -15,17 +16,26 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.UserInfo;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "hash070";
@@ -44,6 +54,13 @@ public class MainActivity extends AppCompatActivity {
     private DatagramPacket datagramPacket;
     private LayoutInflater layoutInflater;
     private WebView myWebView;
+    private int running_speed;//运行速度
+    private int camera_angle;//转向角度
+    private TextView speed_text;
+
+    private static String sshName ="root";
+    private static String sshPw ="";
+    private static int sshPort =22;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
         getComponent();
-        setWebView(ip,8080);
+        setWebView(ip, 8080);
         initUDP();
         up.setOnTouchListener(upListener);
         down.setOnTouchListener(downListener);
@@ -68,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         right = (ImageButton) findViewById(R.id.right);
         up = (ImageButton) findViewById(R.id.up);
         down = (ImageButton) findViewById(R.id.down);
+        speed_text = (TextView) findViewById(R.id.speed_textview);
     }
 
     protected void setWebView(String ip, int port) {
@@ -86,6 +104,9 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPreferences = getSharedPreferences("data", Context.MODE_PRIVATE);
         ip = sharedPreferences.getString("ip", "192.168.1.1");//默认ip:192.168.1.1
         port = sharedPreferences.getInt("port", 7878);//默认端口:7878
+        running_speed = sharedPreferences.getInt("speed", 50);//默认速度50
+        sshName= sharedPreferences.getString("sshname","root");//默认root
+        sshPw=sharedPreferences.getString("sshpw","0");
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -93,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
         myWebView.loadUrl("http://" + ip + ":" + 8080 + "/?action=stream");
+        speed_text.setTextColor(Color.GREEN);
+        speed_text.setText("当前速度为："+running_speed);
     }
 
     private void createUDP(String ip, int port) {
@@ -114,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            sendData = ("1,50,0,0,0,1").getBytes();
+                            sendData = ("1,"+running_speed+",0,0,0,1").getBytes();
                             datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                             s.send(datagramPacket);
                             Log.d(TAG, "run: 1,50");
@@ -153,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            sendData = ("2,50,0,0,0,1").getBytes();
+                            sendData = ("2,"+running_speed+",0,0,0,1").getBytes();
                             datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                             s.send(datagramPacket);
                             Log.d(TAG, "run: 2,50");
@@ -192,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            sendData = ("3,50,0,0,0,1").getBytes();
+                            sendData = ("3,"+running_speed+",0,0,0,1").getBytes();
                             datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                             s.send(datagramPacket);
                             Log.d(TAG, "run: 3,50");
@@ -231,7 +254,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            sendData = ("4,50,0,0,0,1").getBytes();
+                            sendData = ("4,"+running_speed+",0,0,0,1").getBytes();
                             datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                             s.send(datagramPacket);
                             Log.d(TAG, "run: 4,50");
@@ -305,8 +328,7 @@ public class MainActivity extends AppCompatActivity {
                     datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                     s.send(datagramPacket);
                     Log.d(TAG, "右转20度");
-                    Thread.sleep(100);
-                } catch (IOException | InterruptedException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -322,8 +344,7 @@ public class MainActivity extends AppCompatActivity {
                     datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                     s.send(datagramPacket);
                     Log.d(TAG, "左转20度");
-                    Thread.sleep(100);
-                } catch (IOException | InterruptedException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -339,8 +360,7 @@ public class MainActivity extends AppCompatActivity {
                     datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                     s.send(datagramPacket);
                     Log.d(TAG, "抬头10度");
-                    Thread.sleep(100);
-                } catch (IOException | InterruptedException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -356,11 +376,165 @@ public class MainActivity extends AppCompatActivity {
                     datagramPacket = new DatagramPacket(sendData, sendData.length, addr);
                     s.send(datagramPacket);
                     Log.d(TAG, "低头10度");
-                    Thread.sleep(100);
-                } catch (IOException | InterruptedException e) {
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }).start();
+    }
+
+    public void inc_speed(View view) {//速度增加
+        SharedPreferences data = getSharedPreferences("data", Context.MODE_PRIVATE);
+        if (running_speed>0&&running_speed<=100){
+            if (running_speed<100) running_speed+=10;//最高速度为100
+            data.edit()
+                    .putInt("speed", running_speed)
+                    .apply();//写入
+        }
+        speed_text.setText("当前速度为："+running_speed);
+    }
+
+    public void desc_speed(View view) {//速度减少
+        SharedPreferences data = getSharedPreferences("data", Context.MODE_PRIVATE);
+        if (running_speed>0&&running_speed<=100){
+            if (running_speed>20) running_speed-=10;//最低速度为20
+            data.edit()
+                    .putInt("speed", running_speed)
+                    .apply();//写入
+        }
+        speed_text.setText("当前速度为："+running_speed);
+    }
+
+    public ArrayList<String> execSSH(String command){
+        ArrayList<String> output = new ArrayList<>();
+        try{
+            JSch jsch=new JSch();
+            Session session = jsch.getSession(sshName,ip, sshPort);
+            session.setPassword(sshPw);
+            // username and password will be given via UserInfo interface.
+            session.setUserInfo(new MyUserInfo());
+            session.setConfig("StrictHostKeyChecking", "no");
+            session.connect();
+
+//            String command="ifconfig";
+
+            Channel channel=session.openChannel("exec");
+            ((ChannelExec)channel).setCommand(command);
+
+            // X Forwarding
+            // channel.setXForwarding(true);
+
+            //channel.setInputStream(System.in);
+            channel.setInputStream(null);
+
+            //channel.setOutputStream(System.out);
+
+            //FileOutputStream fos=new FileOutputStream("/tmp/stderr");
+            //((ChannelExec)channel).setErrStream(fos);
+            ((ChannelExec)channel).setErrStream(System.err);
+
+            InputStream in=channel.getInputStream();
+
+            channel.connect();
+
+
+            byte[] tmp=new byte[1024];
+            while(true){
+                while(in.available()>0){
+                    int i=in.read(tmp, 0, 1024);//返回的是读取的长度
+                    if(i<0)break;
+                    System.out.print(new String(tmp, 0, i));
+                    output.add(new String(tmp, 0, i));
+                }
+                if(channel.isClosed()){
+                    if(in.available()>0) continue;
+                    System.out.println("exit-status: "+channel.getExitStatus());
+                    break;
+                }
+                try{Thread.sleep(1000);}catch(Exception ee){}
+            }
+            channel.disconnect();
+            session.disconnect();
+        }
+        catch(Exception e){
+            System.out.println(e);
+        }
+        return output;
+    }
+
+    public void fix_error(View view) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                execSSH("sudo systemctl restart carcil.service");
+            }
+        }).start();
+    }
+
+    public void fix_settings(View view) {//ssh连接设置
+        layoutInflater = getLayoutInflater();
+        View v = layoutInflater.inflate(R.layout.fix_setting_layout, null);
+        EditText fix_name = (EditText) v.findViewById(R.id.fix_name);
+        EditText fix_pw = (EditText) v.findViewById(R.id.fix_pw);
+        fix_name.setText(sshName);
+        fix_pw.setText(sshPw);
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setView(v);
+        builder.setPositiveButton("确定", null);
+        Display defaultDisplay = getWindowManager().getDefaultDisplay();
+        AlertDialog alertDialog = builder.create();
+        Window window = alertDialog.getWindow();
+        window.setGravity(Gravity.BOTTOM);
+        alertDialog.show();
+        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (fix_name.getText().toString().length() != 0 && fix_pw.getText().toString().length() != 0) {
+                    Log.i(TAG, "onClick:" + fix_name.getText().toString());
+                    Log.i(TAG, "onClick:" + fix_pw.getText().toString());
+                    SharedPreferences data = getSharedPreferences("data", Context.MODE_PRIVATE);
+                    data.edit()
+                            .putString("sshname", fix_name.getText().toString())
+                            .putString("sshpw", fix_pw.getText().toString())
+                            .apply();//写入
+                    initUDP();//刷新UDP连接信息
+                    alertDialog.cancel();
+                } else {
+                    Toast.makeText(MainActivity.this, "登录名和密码不能为空", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private class MyUserInfo implements UserInfo {
+        @Override
+        public String getPassphrase() {
+            System.out.println("getPassphrase");
+            return null;
+        }
+        @Override
+        public String getPassword() {
+            System.out.println("getPassword");
+            return null;
+        }
+        @Override
+        public boolean promptPassword(String s) {
+            System.out.println("promptPassword:"+s);
+            return false;
+        }
+        @Override
+        public boolean promptPassphrase(String s) {
+            System.out.println("promptPassphrase:"+s);
+            return false;
+        }
+        @Override
+        public boolean promptYesNo(String s) {
+            System.out.println("promptYesNo:"+s);
+            return true;//notice here!
+        }
+        @Override
+        public void showMessage(String s) {
+            System.out.println("showMessage:"+s);
+        }
     }
 }
